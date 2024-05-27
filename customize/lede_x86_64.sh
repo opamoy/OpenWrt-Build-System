@@ -31,15 +31,15 @@ git_sparse_clone main https://github.com/kenzok8/small-package luci-theme-argone
 git_sparse_clone main https://github.com/kenzok8/small-package luci-app-argone-config
 
 #luci-app-store
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-store
+#git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-store
 git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-lib-taskd
 git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-lib-xterm
 git_sparse_clone master https://github.com/kiddin9/openwrt-packages taskd
 #更换插件名称
-sed -i 's/("iStore"),/("应用中心"),/g' package/linpc/luci-app-store/luasrc/controller/store.lua
+#sed -i 's/("iStore"),/("应用中心"),/g' package/linpc/luci-app-store/luasrc/controller/store.lua
 
 #adguardhome
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-adguardhome
+#git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-adguardhome
 #git_sparse_clone master https://github.com/kiddin9/openwrt-packages adguardhome
 
 #科学上网
@@ -50,8 +50,8 @@ git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-pas
 #sed -i 's/ShadowSocksR Plus+/科学上网/g' feeds/small8/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 
 #ddns-go
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages ddns-go
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-ddns-go
+#git_sparse_clone master https://github.com/kiddin9/openwrt-packages ddns-go
+#git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-ddns-go
 # rm -rf feeds/small8/ddns-go feeds/small8/luci-app-ddns-go
 # git clone --depth=1 https://github.com/sirpdboy/luci-app-ddns-go package/ddnsgo
 
@@ -117,10 +117,10 @@ git_sparse_clone master https://github.com/kiddin9/openwrt-packages lua-maxmindd
 
 
 # 修改默认登录地址
-sed -i 's/192.168.1.1/10.1.1.254/g' ./package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.99.1/g' ./package/base-files/files/bin/config_generate
 
 #2. 修改默认登录密码
-sed -i 's/$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.//g' ./package/lean/default-settings/files/zzz-default-settings
+sed -i 's/$1$eRZDGn.w$lAHe0nuYvaem61CpArhxV.//g' ./package/lean/default-settings/files/zzz-default-settings
 
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=6.1/KERNEL_PATCHVER:=5.15/g' ./target/linux/x86/Makefile
@@ -130,7 +130,7 @@ sed -i 's/$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.//g' ./package/lean/default-settings
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 #添加项目地址
-sed -i '/<tr><td width="33%"><%:CPU usage (%)%><\/td><td id="cpuusage">-<\/td><\/tr>/a <tr><td width="33%"><%:Github项目%><\/td><td><a href="https:\/\/github.com\/lmxslpc\/OpenWrt-Build-System" target="_blank">云编译系统<\/a><\/td><\/tr>' ./package/lean/autocore/files/x86/index.htm
+sed -i '/<tr><td width="33%"><%:CPU usage (%)%><\/td><td id="cpuusage">-<\/td><\/tr>/a <tr><td width="33%"><%:Github项目%><\/td><td><a href="https:\/\/github.com\/lmxslpc\/OpenWrt-Build-System" target="_blank">Discuzamoy<\/a><\/td><\/tr>' ./package/lean/autocore/files/x86/index.htm
 
 # 修改本地时间格式
 sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
