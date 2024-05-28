@@ -45,7 +45,7 @@ git_sparse_clone master https://github.com/kiddin9/openwrt-packages taskd
 #科学上网
 git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-openclash
 git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-passwall
-#git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-ssr-plus
+git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-ssr-plus
 #更换插件名称
 #sed -i 's/ShadowSocksR Plus+/科学上网/g' feeds/small8/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 
@@ -130,7 +130,7 @@ sed -i 's/$1$eRZDGn.w$lAHe0nuYvaem61CpArhxV.//g' ./package/lean/default-settings
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 #添加项目地址
-sed -i '/<tr><td width="33%"><%:CPU usage (%)%><\/td><td id="cpuusage">-<\/td><\/tr>/a <tr><td width="33%"><%:Github项目%><\/td><td><a href="https:\/\/github.com\/lmxslpc\/OpenWrt-Build-System" target="_blank">Discuzamoy<\/a><\/td><\/tr>' ./package/lean/autocore/files/x86/index.htm
+sed -i '/<tr><td width="33%"><%:CPU usage (%)%><\/td><td id="cpuusage">-<\/td><\/tr>/a <tr><td width="33%"><%:Github项目%><\/td><td><a href="https:\/\/github.com\/rnamoy\/OpenWrt-Build-System" target="_blank">Discuzamoy<\/a><\/td><\/tr>' ./package/lean/autocore/files/x86/index.htm
 
 # 修改本地时间格式
 sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
