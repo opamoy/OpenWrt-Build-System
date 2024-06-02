@@ -1,0 +1,54 @@
+name: Delete Releases and Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_count:
+        description: 'Number of releases to delete'
+        required: true
+        default: 5
+      tag_count:
+        description: 'Number of tags to delete'
+        required: true
+        default: 16
+
+jobs:
+  delete-releases-and-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup GitHub CLI
+        uses: cli/gh-action@v2
+
+      - name: Authenticate GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh auth login --with-token <<< $GITHUB_TOKEN
+
+      - name: Fetch all tags
+        run: |
+          git fetch --tags
+
+      - name: Delete specified number of releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_count=${{ github.event.inputs.release_count }}
+          releases=$(gh release list --json tagName -q '.[].tagName' | head -n $release_count)
+          for release in $releases; do
+            echo "Deleting release $release"
+            gh release delete "$release" -y
+          done
+
+      - name: Delete specified number of tags
+        run: |
+          tag_count=${{ github.event.inputs.tag_count }}
+          tags=$(git tag | head -n $tag_count)
+          for tag in $tags; do
+            echo "Deleting tag $tag"
+            git tag -d "$tag"
+            git push origin :refs/tags/"$tag"
+          done
