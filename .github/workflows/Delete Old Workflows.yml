@@ -1,9 +1,9 @@
 name: Delete Old Workflows
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 手动触发工作流
   schedule:
-    - cron: 0 18 * * 1
+    - cron: '0 18 * * 1'  # 每周一的 18:00 运行
 
 jobs:
   Cleaning:
@@ -14,13 +14,13 @@ jobs:
       uses: Mattraks/delete-workflow-runs@main
       with:
         token: ${{ secrets.REPO_TOKEN }}
-        retain_days: 16
-        keep_minimum_runs: 2
+        retain_days: 16  # 保留最近 16 天的工作流运行
+        keep_minimum_runs: 2  # 至少保留最近 2 次工作流运行
 
     - name: Delete Old Releases
       uses: dev-drprasad/delete-older-releases@master
       with:
-        keep_latest: 12
-        delete_tags: true
+        keep_latest: 12  # 保留最新的 12 个发布版本
+        delete_tags: true  # 删除关联的标签
       env:
         GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
