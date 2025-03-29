@@ -1,4 +1,4 @@
-name: LEDE_x86_64
+name: LEDE_x64
 
 on: 
   workflow_dispatch:
