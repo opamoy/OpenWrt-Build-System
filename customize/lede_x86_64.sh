@@ -1,101 +1,123 @@
 #!/bin/bash
-#=================================================
-# 自定义脚本修复版
-# 强制锁定工作目录到项目根目录
-#=================================================
-cd "$(dirname "$0")/.." || { echo "无法进入项目目录"; exit 1; }
+set -eo pipefail
+shopt -s nullglob
 
-########################################## 添加额外包 ##########################################
-function git_sparse_clone() {
-  branch="$1" repourl="$2" && shift 2
-  echo "正在克隆仓库: $repourl (分支: $branch)"
-  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repouru || { echo "克隆失败: $repourl"; exit 1; }
-  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
-  cd "$repodir" || exit 1
-  git sparse-checkout set "$@" || { echo "设置稀疏检出失败"; exit 1; }
-  mkdir -p ../package/linpc
-  mv -f "$@" ../package/linpc || { echo "移动文件失败"; ls -l; exit 1; }
-  cd .. && rm -rf "$repodir"
+#=================================================
+# 增强版稀疏克隆函数
+# 参数：<分支> <仓库URL> [目录1 目录2 ...]
+#=================================================
+git_sparse_clone() {
+    local branch="$1"
+    local repo="$2"
+    shift 2
+
+    echo "🔄 正在克隆仓库: $repo (分支: $branch)"
+    
+    # 生成随机临时目录名
+    local temp_dir=$(mktemp -d -p . tmp.clone.XXXXXXXXXX)
+    
+    git clone --depth=1 \
+        --branch "$branch" \
+        --filter=blob:none \
+        --sparse \
+        "$repo" "$temp_dir" || {
+        echo "❌ 克隆失败: $repo"
+        rm -rf "$temp_dir"
+        return 1
+    }
+
+    (
+        cd "$temp_dir"
+        [ $# -gt 0 ] && git sparse-checkout set "$@"
+        mkdir -p ../package/linpc
+        for item in "$@"; do
+            if [ -e "$item" ]; then
+                mv -v "$item" ../../package/linpc/
+            else
+                echo "⚠️  警告: 路径 $item 不存在于仓库中"
+            fi
+        done
+    )
+
+    rm -rf "$temp_dir"
 }
 
-# 创建目录并清理冲突包
-mkdir -p package/linpc
-rm -rf feeds/packages/net/mosdns
-rm -rf feeds/luci/applications/luci-app-mosdns
-rm -rf feeds/luci/applications/luci-app-netdata
+#=================================================
+# 主程序开始
+#=================================================
+cd "$(dirname "$0")/../lede" || exit 1
 
-# luci-theme-argone
-git_sparse_clone main https://github.com/kenzok8/small-package luci-theme-argone luci-app-argone-config
+echo "📂 当前工作目录: $(pwd)"
+echo "🕒 开始时间: $(date)"
 
-# luci-app-store 依赖
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-lib-taskd luci-lib-xterm taskd
+# 清理冲突组件
+declare -a conflict_dirs=(
+    "feeds/packages/net/mosdns"
+    "feeds/luci/applications/luci-app-mosdns"
+    "feeds/luci/applications/luci-app-netdata"
+)
+for dir in "${conflict_dirs[@]}"; do
+    [ -d "$dir" ] && rm -rf "$dir" && echo "🗑️  已清理: $dir"
+done
 
-# 科学上网插件
-git_sparse_clone master https://github.com/kiddin9/openwrt-packages luci-app-openclash luci-app-passwall luci-app-ssr-plus
+# 克隆必要组件
+declare -A package_sources=(
+    ["small-package"]="main,https://github.com/kenzok8/small-package,luci-theme-argone luci-app-argone-config"
+    ["openwrt-pkgs"]="master,https://github.com/kiddin9/openwrt-packages,luci-lib-taskd luci-lib-xterm taskd"
+    ["passwall"]="master,https://github.com/kiddin9/openwrt-packages,luci-app-openclash luci-app-passwall luci-app-ssr-plus"
+)
 
-# Netdata
-git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/linpc/luci-app-netdata
-if [ -d "package/linpc/luci-app-netdata" ]; then
-  sed -i 's/"status"/"system"/g' package/linpc/luci-app-netdata/luasrc/controller/*.lua
-  sed -i 's/"status"/"system"/g' package/linpc/luci-app-netdata/luasrc/model/cgi/*.lua
-  sed -i 's/admin\/status/admin\/system/g' package/linpc/luci-app-netdata/luasrc/view/netdata/*.htm
+for key in "${!package_sources[@]}"; do
+    IFS=',' read -r branch url paths <<< "${package_sources[$key]}"
+    git_sparse_clone "$branch" "$url" $paths
+done
+
+# 特殊组件处理
+echo "🔧 安装特殊组件..."
+git clone --depth 1 https://github.com/Jason6111/luci-app-netdata package/linpc/luci-app-netdata
+
+#=================================================
+# 系统配置修改
+#=================================================
+apply_patch() {
+    local file="$1"
+    local pattern="$2"
+    local replacement="$3"
+
+    if [ -f "$file" ]; then
+        if grep -q "$pattern" "$file"; then
+            sed -i "s|$pattern|$replacement|g" "$file"
+            echo "✅ 已修改: $file"
+        else
+            echo "⚠️  未找到匹配模式: $file -> $pattern"
+        fi
+    else
+        echo "❌ 文件不存在: $file"
+    fi
+}
+
+# 应用所有修改
+declare -A config_mods=(
+    ["package/base-files/files/bin/config_generate"]="192.168.1.1/192.168.99.1"
+    ["feeds/packages/utils/ttyd/files/ttyd.config"]="/bin/login/-f root"
+    ["package/lean/autocore/files/x86/index.htm"]="<%:CPU usage (%)%>/<%:Github项目%>"
+    ["scripts/download.pl"]="mirror.iscas.ac.cn\/kernel.org/mirrors.edge.kernel.org\/pub"
+)
+
+for file in "${!config_mods[@]}"; do
+    IFS='/' read -r pattern replacement <<< "${config_mods[$file]}"
+    apply_patch "$file" "$pattern" "$replacement"
+done
+
+# 版本信息修改
+version_file="package/lean/default-settings/files/zzz-default-settings"
+if [ -f "$version_file" ]; then
+    build_date=$(date +"%y.%m.%d")
+    sed -i "s|DISTRIB_REVISION='.*'|DISTRIB_REVISION='R${build_date} by OpenWrtBuilder'|" "$version_file"
+    echo "🔄 已更新版本信息"
 else
-  echo "警告: luci-app-netdata 未成功克隆"
+    echo "❌ 版本文件不存在: $version_file"
 fi
 
-# Mosdns
-git_sparse_clone v5 https://github.com/sbwml/luci-app-mosdns luci-app-mosdns mosdns
-rm -rf feeds/packages/utils/v2dat
-rm -rf package/feeds/packages/v2dat
-git_sparse_clone v5 https://github.com/sbwml/luci-app-mosdns v2dat
-
-########################################## 系统设置 ##########################################
-# 修改默认登录地址
-CONFIG_GENERATE="package/base-files/files/bin/config_generate"
-if [ -f "$CONFIG_GENERATE" ]; then
-  sed -i 's/192.168.1.1/192.168.99.1/g' "$CONFIG_GENERATE"
-else
-  echo "错误: $CONFIG_GENERATE 不存在"
-  exit 1
-fi
-
-# 修改默认密码
-ZZZ_SETTINGS="package/lean/default-settings/files/zzz-default-settings"
-if [ -f "$ZZZ_SETTINGS" ]; then
-  sed -i 's/$1$eRZDGn.w$lAHe0nuYvaem61CpArhxV.//g' "$ZZZ_SETTINGS"
-else
-  echo "警告: $ZZZ_SETTINGS 不存在"
-fi
-
-# TTYD 免登录
-TTYD_CONFIG="feeds/packages/utils/ttyd/files/ttyd.config"
-if [ -f "$TTYD_CONFIG" ]; then
-  sed -i 's|/bin/login|/bin/login -f root|g' "$TTYD_CONFIG"
-else
-  echo "警告: $TTYD_CONFIG 未找到"
-fi
-
-# 添加项目地址到状态页
-INDEX_HTML="package/lean/autocore/files/x86/index.htm"
-if [ -f "$INDEX_HTML" ]; then
-  sed -i '/<tr><td width="33%"><%:CPU usage (%)%><\/td><td id="cpuusage">-<\/td><\/tr>/a <tr><td width="33%"><%:Github项目%><\/td><td><a href="https:\/\/github.com\/rnamoy\/OpenWrt-Build-System" target="_blank">Discuzamoy<\/a><\/td><\/tr>' "$INDEX_HTML"
-else
-  echo "警告: $INDEX_HTML 未找到"
-fi
-
-# 修改镜像源
-DOWNLOAD_PL="scripts/download.pl"
-if [ -f "$DOWNLOAD_PL" ]; then
-  sed -i 's#mirror.iscas.ac.cn/kernel.org#mirrors.edge.kernel.org/pub#' "$DOWNLOAD_PL"
-else
-  echo "错误: $DOWNLOAD_PL 不存在"
-  exit 1
-fi
-
-# 其他修复
-mkdir -p feeds/packages/lang
-rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
-chmod -R 755 feeds/packages/lang/golang
-
-echo "所有自定义操作已完成"
+echo "✅ 所有自定义操作已完成"
+echo "🕒 结束时间: $(date)"
